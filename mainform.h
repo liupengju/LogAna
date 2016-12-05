@@ -21,6 +21,11 @@
 #include <QtFtp/QFtp>
 #include <QDir>
 #include <QDateTime>
+#include <QCompleter>
+#include <QStringListModel>
+#include <QTableWidget>
+#include <QTableWidgetItem>
+#include <QDomDocument>
 #include "ftpdownloard.h"
 #include "global.h"
 
@@ -28,6 +33,13 @@
 namespace Ui {
 class MainForm;
 }
+typedef struct sTranInfo
+{
+    QString sCpSeqNo;
+    QString sEpSeqNo;
+    QString sTrnCode;
+    QString sStartTime;
+}sTranInfo;
 
 class MainForm : public QWidget
 {
@@ -43,6 +55,10 @@ private:
     QString _mLogName;
     QNetworkAccessManager *manager;
     QNetworkReply *reply;
+    QStringListModel *_mEpSeqStringListModel;
+    QStringList _mEpSeqNoList;
+    QCompleter *_mEpSeqEditCompleter;
+    QVector <sTranInfo> _mTranInfoVector;
     //FTP新增对象
     QFtp *ftp;
 
@@ -56,6 +72,8 @@ private:
     int departLog();
     //分析流水文件，并将交易报文，交易流水，交易结果映射到TableWidget中。
     int analysisSeqLog();
+    //分析获取到的交易报文，并映射到[tableWidget]中
+    int analysisMessage(QString sMsg,QString sSrcMQ,QString sDestMQ);
 
 private slots:
     void on_updateBtn_clicked();

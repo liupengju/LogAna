@@ -120,3 +120,8 @@ void MainWindow::newMainForm(QTreeWidgetItem * item, int)
         ui->mainTab->setCurrentIndex(ui->mainTab->count()-1);
     }
 }
+
+void MainWindow::on_mainTab_tabBarDoubleClicked(int index)
+{
+    ui->mainTab->removeTab(index);
+}

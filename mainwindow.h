@@ -30,6 +30,8 @@ public:
 private slots:
     void newMainForm(QTreeWidgetItem*,int);
 
+    void on_mainTab_tabBarDoubleClicked(int index);
+
 private:
     Ui::MainWindow *ui;
     QAction *_mSetConfigAction;
