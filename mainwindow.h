@@ -26,16 +26,20 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     void setDevTree();
+signals:
+    void showTypeChanged(bool showSecuMQ,bool showSwitchMQ);
 
 private slots:
-    void newMainForm(QTreeWidgetItem*,int);
-
+    void onNewMainForm(QTreeWidgetItem*,int);
+    void onShowTypeChanged();
     void on_mainTab_tabBarDoubleClicked(int index);
 
 private:
     Ui::MainWindow *ui;
     QAction *_mSetConfigAction;
     QAction *_mDevMangerAction;
+    QAction *_mShowSecuMQ;
+    QAction *_mShowSwitchMQ;
     QMenu *_mSetMenu;
     AtmpConfig *_mConnfig;
     DevManger *_mDevManger;

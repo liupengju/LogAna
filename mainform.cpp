@@ -8,7 +8,7 @@ MainForm::MainForm(QWidget *parent) :
     ui->setupUi(this);
 }
 
-MainForm::MainForm(QString devIp,QWidget *parent):
+MainForm::MainForm(QString devIp,bool showSecuMQ,bool showSwitchMQ,QWidget *parent):
     QWidget(parent),
     ui(new Ui::MainForm)
 {
@@ -16,12 +16,15 @@ MainForm::MainForm(QString devIp,QWidget *parent):
     _mEpSeqEditCompleter = new QCompleter(this);
     _mEpSeqStringListModel = new QStringListModel(this);
     this->_mDevIp = devIp;
+    this->_mShowSecuMq = showSecuMQ;
+    this->_mShowSwitchMq = showSwitchMQ;
     this->_mLogName = gDownLoadDir + devIp.replace('.','_');
     //实例化FTP对象
     ftp  = new QFtp(this);
     connect(ftp,SIGNAL(commandStarted(int)),this,SLOT(ftpCommandStarted(int)));
     connect(ftp,SIGNAL(commandFinished(int,bool)),this,SLOT(ftpCommandFinished(int,bool)));
     debuger(this->_mLogName);
+    qDebug()<<_mShowSecuMq<<_mShowSwitchMq;
 }
 
 MainForm::~MainForm()
@@ -197,11 +200,11 @@ void MainForm::on_updateBtn_clicked()
         //    connect(manager,SIGNAL(finished(QNetworkReply*)),this,SLOT(replyFinished(QNetworkReply*)));
         //下载日志
         //使用编译的QFtp类来实现日志下载
-        //    ftp->connectToHost("10.8.6.33");
-        //    ftp->login("tsp30cz","123456");
-        //    ftp->cd("log/debug");
-        //    ftp->get("lpjerrdebug.txt");
-        //    ftp->close();
+            ftp->connectToHost("10.8.6.33");
+            ftp->login("tsp30cz","123456");
+            ftp->cd("log/debug");
+            ftp->get("lpjerrdebug.txt");
+            ftp->close();
     }
 
     //分解日志文件
@@ -344,6 +347,44 @@ int MainForm::departLog()
     return 0;
 }
 
+//因为接出渠道的报文是多层xml,所以采用递归的方式读取各个节点的节点名称和属性。
+getNodeOfOutChanal(QDomElement element,QString currentPath,QTableWidget *tabWidget)
+{
+    //在实际的运行中得出,如下这种含有tagName的节点:<field type=\"string\" length=\"2\" scale=\"0\" >03</field>
+    //QDom会将</field>当作<field ..>的子节点。所以,判断节点是否有子节点需要考虑这种情况。
+    //所以没有采用!element.hasChildNodes()作为查询结束标志。而是将element.tagName() == "field"作为结束标志
+    QString sCurrentPath = currentPath;
+    if( (element.tagName() != "data")  &&
+            (element.tagName() != "field") &&
+            (element.tagName() != "struct"))
+        sCurrentPath = currentPath + "/"+ element.tagName();
+    //如果该节点没有子节点,则获取该节点的信息,并插入到tabWidget.
+    if(element.tagName() == "field")
+    {
+        QString sNodeName = element.parentNode().toElement().attribute("name");
+        QString sNodeType = element.attribute("type");
+        QString sNodeLen = element.attribute("length");
+        qDebug()<<"  NODENAME-------->"<<sCurrentPath+"/"+sNodeName<<"DATA-------->"<<element.text();
+
+        int index = tabWidget->rowCount();
+        debuger(QString("index[%1]").arg(index));
+        tabWidget->insertRow(index);
+        tabWidget->setItem(index,0,new QTableWidgetItem(sCurrentPath));
+        tabWidget->setItem(index,1,new QTableWidgetItem(sNodeName));
+        tabWidget->setItem(index,2,new QTableWidgetItem(sNodeType));
+        tabWidget->setItem(index,3,new QTableWidgetItem(sNodeLen));
+        tabWidget->setItem(index,4,new QTableWidgetItem(element.text()));
+    }
+    else
+    {
+        for(int i = 0;i < element.childNodes().count(); i++)
+        {
+            //如果当前节点有子节点,则递归处理子节点
+            getNodeOfOutChanal(element.childNodes().at(i).toElement(),sCurrentPath,tabWidget);
+        }
+    }
+}
+
 int MainForm::analysisMessage(QString sMsg,QString sSrcMQ,QString sDestMQ)
 {
     //处理xml报文,将xml报文中的'.'转换成空格
@@ -356,13 +397,20 @@ int MainForm::analysisMessage(QString sMsg,QString sSrcMQ,QString sDestMQ)
     int index = 1;
     QString tagName;
 
+
+    if((sSrcMQ.contains("80")||sDestMQ.contains("80")))
+        if(_mShowSwitchMq == false)
+            return 0;
+    if((sSrcMQ.contains("84")||sDestMQ.contains("84")))
+        if(_mShowSecuMq == false)
+            return 0;
+
     //处理200的xml报文
-    if(sSrcMQ == "200" || sDestMQ == "200")
+    if(sSrcMQ.startsWith("20") || sDestMQ.startsWith("20"))
     {
         QTableWidget *tabWidget =  new QTableWidget(this);
         QStringList headList;
         headList<<"节点"<<"数据";
-        //tabWidget->setRowCount(100);
         tabWidget->setColumnCount(2);
         tabWidget->setHorizontalHeaderLabels(headList);
         for(int i = 0;i<root.childNodes().count();i++)
@@ -372,41 +420,40 @@ int MainForm::analysisMessage(QString sMsg,QString sSrcMQ,QString sDestMQ)
             tabWidget->insertRow(i);
             tabWidget->setItem(i,0,new QTableWidgetItem(sName));
             tabWidget->setItem(i,1,new QTableWidgetItem(sText));
-            //debuger(QString("Name[%1]---->Text[%2]").arg(sName).arg(sText));
         }
+        tabWidget->resizeColumnToContents(1);
+        tabWidget->resizeRowsToContents();
         this->ui->msgTabWidget->addTab(tabWidget,QString("%1-->%2").arg(sSrcMQ).arg(sDestMQ));
     }
     //处理410的xml报文
-    if(sSrcMQ == "410" || sDestMQ == "410")
+    if(sSrcMQ.startsWith("4") || sDestMQ.startsWith("4"))
     {
+        debuger("410");
         QTableWidget *tabWidget =  new QTableWidget(this);
         QStringList headList;
         //节点用'/'组织，类型为"String(length)","Double(20,2)"...
-        headList<<"节点"<<"类型"<<"数据";
+        headList<<"路径"<<"节点"<<"类型"<<"长度"<<"数据";
         //tabWidget->setRowCount(100);
-        tabWidget->setColumnCount(3);
+        tabWidget->setColumnCount(5);
         tabWidget->setHorizontalHeaderLabels(headList);
-        QDomElement cursorElement;
-        for(int i = 0;i<root.childNodes().count();i++)
+        qDebug()<<QString("sMSG[%1]").arg(sMsg);
+        getNodeOfOutChanal(root,"",tabWidget);
+        tabWidget->resizeColumnToContents(0);
+        tabWidget->resizeColumnToContents(1);
+        tabWidget->resizeColumnToContents(4);
+        tabWidget->resizeRowsToContents();
+        for(int i = 0;i < tabWidget->rowCount();i++)
         {
-            QString sName = root.tagName() + '/';
-            cursorElement = root.childNodes().at(i).toElement();
-            sName = sName + cursorElement.tagName() + "/";
-            while(cursorElement.hasChildNodes())
+            if((tabWidget->item(i,2)->text() == "RET_CODE")&&(tabWidget->item(i,4)->text() != "000000"))
             {
-
+                debuger("RETCODE-------------------------0000000");
+                this->ui->msgTabWidget->addTab(tabWidget,QIcon(":/icon/err.png"),QString("%1-->%2").arg(sSrcMQ).arg(sDestMQ));
+                return 0;
             }
-
-            QString sName = root.childNodes().at(i).toElement().tagName();
-            QString sText = root.childNodes().at(i).toElement().text();
-            tabWidget->insertRow(i);
-            tabWidget->setItem(i,0,new QTableWidgetItem(sName));
-            tabWidget->setItem(i,1,new QTableWidgetItem(sText));
-            //debuger(QString("Name[%1]---->Text[%2]").arg(sName).arg(sText));
         }
         this->ui->msgTabWidget->addTab(tabWidget,QString("%1-->%2").arg(sSrcMQ).arg(sDestMQ));
+        return 0;
     }
-    return 0;
 }
 
 void MainForm::on_anaBtn_clicked()
@@ -440,6 +487,12 @@ void MainForm::on_anaBtn_clicked()
             if(sLine.contains(QString("iDestMQ")))
             {
                 sDestMQ = sLine.mid(48,3);
+                //isMQGot = true;
+            }
+            if(sLine.contains(QString("iSwitch_num")))
+            {
+                sSrcMQ.append(QString("[%1]").arg(sLine.mid(48,1)));
+                qDebug()<<"------->iSwitch_num"<<sSrcMQ<<sDestMQ<<sLine.mid(48,1);
                 isMQGot = true;
             }
         }
@@ -471,4 +524,11 @@ void MainForm::on_anaBtn_clicked()
             }
         }
     }
+}
+
+void MainForm::onChangeShowType(bool showSecuMQ, bool showSwitchMq)
+{
+    _mShowSecuMq = showSecuMQ;
+    _mShowSwitchMq = showSwitchMq;
+    qDebug()<<"SLOT "<<_mShowSecuMq<<_mShowSwitchMq;
 }

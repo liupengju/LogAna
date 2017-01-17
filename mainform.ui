@@ -41,14 +41,14 @@
        <item>
         <widget class="QPushButton" name="updateBtn">
          <property name="text">
-          <string>下载日志</string>
+          <string>下载日志[&amp;D]</string>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="anaBtn">
          <property name="text">
-          <string>查看日志</string>
+          <string>查看日志[&amp;L]</string>
          </property>
         </widget>
        </item>

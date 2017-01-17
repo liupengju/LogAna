@@ -13,7 +13,7 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->mainTab->hide();
     setAction();
     this->setDevTree();
-    connect(ui->devTreeWidget,SIGNAL(itemDoubleClicked(QTreeWidgetItem*,int)),this,SLOT(newMainForm(QTreeWidgetItem*,int)));
+    connect(ui->devTreeWidget,SIGNAL(itemDoubleClicked(QTreeWidgetItem*,int)),this,SLOT(onNewMainForm(QTreeWidgetItem*,int)));
 }
 
 MainWindow::~MainWindow()
@@ -25,16 +25,29 @@ void MainWindow::setAction()
 {
     _mConnfig = new AtmpConfig();
     _mDevManger = new DevManger();
-    _mSetConfigAction = new QAction("ATMP网络设置",this);
-    _mDevMangerAction = new QAction("设备管理",this);
+    _mSetConfigAction = new QAction("ATMP网络设置[&A]",this);
+    _mDevMangerAction = new QAction("设备管理[&D]",this);
+    _mShowSecuMQ = new QAction("显示安全队列[&S]",this);
+    _mShowSwitchMQ = new QAction("显示路由队列[&W]",this);
+    _mShowSecuMQ->setCheckable(true);
+    _mShowSwitchMQ->setCheckable(true);
     connect(_mSetConfigAction,SIGNAL(triggered(bool)),this->_mConnfig,SLOT(show()));
     connect(_mDevMangerAction,SIGNAL(triggered(bool)),this->_mDevManger,SLOT(show()));
+    connect(_mShowSecuMQ,SIGNAL(triggered(bool)),this,SLOT(onShowTypeChanged()));
+    connect(_mShowSwitchMQ,SIGNAL(triggered(bool)),this,SLOT(onShowTypeChanged()));
 
-    _mSetMenu = this->menuBar()->addMenu("设置");
+    _mSetMenu = this->menuBar()->addMenu("设置[&S]");
     _mSetMenu->addAction(_mSetConfigAction);
     _mSetMenu->addAction(_mDevMangerAction);
+    _mSetMenu->addSeparator();
+    _mSetMenu->addAction(_mShowSecuMQ);
+    _mSetMenu->addAction(_mShowSwitchMQ);
 }
 
+void MainWindow::onShowTypeChanged()
+{
+    emit(showTypeChanged(_mShowSecuMQ->isChecked(),_mShowSwitchMQ->isChecked()));
+}
 void MainWindow::setDevTree()
 {
     //sDevListMap[AtmpHost,devIpList]
@@ -93,7 +106,7 @@ void MainWindow::setDevTree()
     }
 }
 
-void MainWindow::newMainForm(QTreeWidgetItem * item, int)
+void MainWindow::onNewMainForm(QTreeWidgetItem * item, int)
 {
     QTreeWidgetItem *parent=item->parent();//获得父节点
     if(NULL==parent)
@@ -103,7 +116,9 @@ void MainWindow::newMainForm(QTreeWidgetItem * item, int)
     {
         ui->mainTab->show();
         ui->mainTab->clear();
-        MainForm *form = new MainForm(devIp,this);
+        MainForm *form = new MainForm(devIp,this->_mShowSecuMQ->isChecked(),
+                                      this->_mShowSwitchMQ->isChecked(),this);
+        connect(this,SIGNAL(showTypeChanged(bool,bool)),form,SLOT(onChangeShowType(bool,bool)));
         ui->mainTab->addTab(form,devIp);
     }
     else
@@ -116,7 +131,8 @@ void MainWindow::newMainForm(QTreeWidgetItem * item, int)
                 return;
             }
         }
-        ui->mainTab->addTab(new MainForm(devIp,this),devIp);
+        ui->mainTab->addTab(new MainForm(devIp,this->_mShowSecuMQ->isChecked(),
+                                         this->_mShowSwitchMQ->isChecked(),this),devIp);
         ui->mainTab->setCurrentIndex(ui->mainTab->count()-1);
     }
 }

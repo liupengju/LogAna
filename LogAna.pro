@@ -37,3 +37,6 @@ DISTFILES += \
     Res/dev.ini \
     Res/atmp.ini \
     Res/README.md
+
+RESOURCES += \
+    Icon/icon.qrc

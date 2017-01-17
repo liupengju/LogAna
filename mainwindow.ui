@@ -105,6 +105,22 @@
     <string>ATMP 服务器</string>
    </property>
   </action>
+  <action name="actionShow_Seu">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>show Seu</string>
+   </property>
+  </action>
+  <action name="actionFda">
+   <property name="text">
+    <string>fda </string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

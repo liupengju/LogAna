@@ -47,7 +47,8 @@ class MainForm : public QWidget
 
 public:
     explicit MainForm(QWidget *parent = 0);
-    explicit MainForm(QString devIp,QWidget *parent = 0);
+    //explicit MainForm(QString devIp,QWidget *parent = 0);
+    MainForm(QString devIp,bool showSecuMQ,bool showSwitchMQ,QWidget *parent = 0);
     ~MainForm();
 private:
     Ui::MainForm *ui;
@@ -59,9 +60,11 @@ private:
     QStringList _mEpSeqNoList;
     QCompleter *_mEpSeqEditCompleter;
     QVector <sTranInfo> _mTranInfoVector;
+    bool _mShowSecuMq;
+    bool _mShowSwitchMq;
+
     //FTP新增对象
     QFtp *ftp;
-
     //下载日志文件
     int downloadLogFile();
     //根据CP流水号获取流水日志文件
@@ -85,7 +88,8 @@ private slots:
     //FTP新增SLOT
     void ftpCommandStarted(int);
     void ftpCommandFinished(int,bool);
-
+    //
+    void onChangeShowType(bool showSecuMQ,bool showSwitchMq);
 };
 
 #endif // MAINFORM_H
